@@ -1,24 +1,25 @@
 package com.example.login;
 
 import java.io.IOException;
-import java.sql.*;
-import javax.servlet.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+// import your centralized utility
+import com.example.login.DatabaseUtils;
 
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
-    private Connection getConnection() throws SQLException, ServletException {
-    	
-    	 try {
-             Class.forName("com.mysql.cj.jdbc.Driver");
-         } catch (ClassNotFoundException e) {
-             throw new ServletException("MySQL JDBC Driver not found", e);
-         }
 
-        return DriverManager.getConnection(
-          "jdbc:mysql://localhost:3306/login_project",
-          "root", "Fla97456@");
+    // now just pulls a connection from DatabaseUtils
+    private Connection getConnection() throws SQLException {
+        return DatabaseUtils.getConnection();
     }
 
     @Override

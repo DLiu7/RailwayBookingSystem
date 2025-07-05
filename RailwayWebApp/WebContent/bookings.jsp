@@ -1,4 +1,4 @@
-<%@ page import="java.sql.*" contentType="text/html; charset=UTF-8" %>
+<%@ page import="java.sql.*, com.example.login.DatabaseUtils" contentType="text/html; charset=UTF-8" %>
 <%
     // Protect page
     if (session == null || session.getAttribute("user") == null) {
@@ -101,10 +101,8 @@
     <h1><%= isAdmin ? "All Users’ Reservations" : user + "’s Reservations" %></h1>
     <%
       try {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        Connection conn = DriverManager.getConnection(
-          "jdbc:mysql://localhost:3306/login_project",
-          "root","Fla97456@");
+    	  Connection conn = DatabaseUtils.getConnection();
+
         String sql;
         if (isAdmin) {
           sql = "SELECT u.username, r.id, r.train, r.travel_date, r.seat_id "
