@@ -9,28 +9,28 @@
     /* reset + full‐screen train image */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: 'Roboto', sans-serif;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
 
-  /* single full-screen background image */
-  background: 
-    url('Train5.jpg')
-    no-repeat center center fixed;
-  background-size: cover;
+      /* single full-screen background image */
+      background: 
+        url('Train5.jpg')
+        no-repeat center center fixed;
+      background-size: cover;
 
-  /* center your card */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+      /* center your card */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     /* dark‐blue “glass” login card */
     .login-card {
       width: 520px;
       padding: 40px;
-      background: rgba(10,37,64,1.5);
+      background: rgba(10,37,64,0.85);
       border-radius: 16px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       color: #fff;
@@ -109,6 +109,23 @@
       from { opacity: 0; transform: translateY(-20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* —— new link-text styles —— */
+    .link-text {
+      margin-top: 20px;               /* Space above the link */
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);   /* Slightly transparent white */
+      text-align: center;             /* Center it under the button */
+    }
+    .link-text a {
+      color: #FFC947;                 /* Yellow link color */
+      text-decoration: none;          /* Remove underline */
+      font-weight: 500;               /* Slightly bolder */
+      transition: color .2s;          /* Smooth hover */
+    }
+    .link-text a:hover {
+      color: #f06552;                 /* Reddish-orange on hover */
+    }
   </style>
 </head>
 <body>
@@ -128,6 +145,11 @@
       <% } %>
       <button type="submit">Log In</button>
     </form>
+
+    <div class="link-text">
+      Don’t have an account? <a href="register.jsp">Register Account</a>
+    </div>
   </div>
 </body>
 </html>
+
