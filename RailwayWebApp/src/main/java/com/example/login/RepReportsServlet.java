@@ -5,6 +5,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.format.DateTimeFormatter; // Not directly used but kept if other parts rely on it
 import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.ServletException;
@@ -25,7 +28,7 @@ public class RepReportsServlet extends HttpServlet {
         String userRole = (String) session.getAttribute("role");
 
         // Protect servlet - only accessible by Customer Reps or Admin
-        if (session.getAttribute("user") == null || (!"admin".equalsIgnoreCase(userRole) && !"customer_rep".equalsIgnoreCase(userRole))) {
+        if (session.getAttribute("user") == null || (!"admin".equalsIgnoreCase(userRole) && !"customer_representative".equalsIgnoreCase(userRole))) {
             response.sendRedirect("login2.jsp"); // Not logged in or not authorized
             return;
         }
@@ -42,14 +45,19 @@ public class RepReportsServlet extends HttpServlet {
 
             if ("stationSchedules".equals(reportType)) {
                 // --- TRAIN SCHEDULES FOR GIVEN STATION REPORT ---
-                String stationId = request.getParameter("stationId");
+                String stationIdStr = request.getParameter("stationId");
                 String searchType = request.getParameter("searchType"); // "origin" or "destination"
 
-                if (stationId == null || stationId.isEmpty() || searchType == null || searchType.isEmpty()) {
+                if (stationIdStr == null || stationIdStr.isEmpty() || searchType == null || searchType.isEmpty()) {
                     // Initial load or missing parameters, just forward to JSP
+                    // Pass selectedStationId back to retain dropdown selection on initial load
+                    request.setAttribute("selectedStationId", request.getParameter("stationId"));
+                    request.setAttribute("searchType", request.getParameter("searchType"));
                     request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
                     return;
                 }
+
+                int stationId = Integer.parseInt(stationIdStr);
 
                 List<List<String>> schedules = new ArrayList<>();
                 String sql;
@@ -73,12 +81,13 @@ public class RepReportsServlet extends HttpServlet {
                     message = "Invalid search type specified.";
                     request.setAttribute("message", message);
                     request.setAttribute("messageType", messageType);
+                    request.setAttribute("selectedStationId", stationIdStr); // Pass back for form retention
                     request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
                     return;
                 }
 
                 ps = conn.prepareStatement(sql);
-                ps.setInt(1, Integer.parseInt(stationId));
+                ps.setInt(1, stationId);
                 rs = ps.executeQuery();
 
                 while (rs.next()) {
@@ -92,41 +101,49 @@ public class RepReportsServlet extends HttpServlet {
                     schedules.add(schedule);
                 }
                 request.setAttribute("schedules", schedules);
-                request.setAttribute("selectedStationName", getStationNameById(conn, Integer.parseInt(stationId)));
+                request.setAttribute("selectedStationName", getStationNameById(conn, stationId));
+                request.setAttribute("selectedStationId", stationIdStr); // Pass back for form retention
                 request.setAttribute("searchType", searchType);
                 request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
 
             } else if ("customerReservations".equals(reportType)) {
                 // --- CUSTOMERS WITH RESERVATIONS REPORT ---
                 String lineName = request.getParameter("lineName");
-                String travelDate = request.getParameter("travelDate"); // Format: YYYY-MM-DD
+                String travelDateStr = request.getParameter("travelDate"); // Format: YYYY-MM-DD
 
-                if (lineName == null || lineName.isEmpty() || travelDate == null || travelDate.isEmpty()) {
+                if (lineName == null || lineName.isEmpty() || travelDateStr == null || travelDateStr.isEmpty()) {
                     // Initial load or missing parameters, just forward to JSP
+                    request.setAttribute("selectedLineName", request.getParameter("lineName"));
+                    request.setAttribute("selectedDate", request.getParameter("travelDate"));
                     request.getRequestDispatcher("rep_customer_reservations_report.jsp").forward(request, response);
                     return;
                 }
 
+                Date travelDate = Date.valueOf(travelDateStr);
+
                 List<List<String>> customersWithReservations = new ArrayList<>();
-                String sql = "SELECT u.username, r.train, r.travel_date, r.departure_time, " +
+                // --- FIX STARTS HERE: Corrected SQL query for customerReservations ---
+                String sql = "SELECT u.username, r.train AS train_name, r.travel_date, r.departure_time, " +
                              "os.name AS origin_station_name, ds.name AS destination_station_name, " +
                              "r.seat_id, r.passenger_type, r.trip_type " +
                              "FROM reservations r " +
-                             "JOIN users u ON r.user_id = u.id " +
-                             "JOIN station os ON r.origin_station_id = os.station_id " +
-                             "JOIN station ds ON r.destination_station_id = ds.station_id " +
-                             "WHERE r.line_name = ? AND r.travel_date = ? " +
+                             "JOIN users u ON r.user_id = u.CustomerID " +
+                             "JOIN station os ON r.origin_station_id = os.station_id " + // Join directly on reservations.origin_station_id
+                             "JOIN station ds ON r.destination_station_id = ds.station_id " + // Join directly on reservations.destination_station_id
+                             "WHERE r.line_name = ? " + // Filter directly using line_name from reservations
+                             "AND r.travel_date = ? " +
                              "ORDER BY u.username, r.departure_time ASC";
+                // --- FIX ENDS HERE ---
 
                 ps = conn.prepareStatement(sql);
                 ps.setString(1, lineName);
-                ps.setString(2, travelDate); // Date as string "YYYY-MM-DD"
+                ps.setDate(2, travelDate);
                 rs = ps.executeQuery();
 
                 while (rs.next()) {
                     List<String> reservation = new ArrayList<>();
                     reservation.add(rs.getString("username"));
-                    reservation.add(rs.getString("train"));
+                    reservation.add(rs.getString("train_name"));
                     reservation.add(rs.getDate("travel_date").toString());
                     reservation.add(rs.getTime("departure_time").toString());
                     reservation.add(rs.getString("origin_station_name"));
@@ -138,7 +155,7 @@ public class RepReportsServlet extends HttpServlet {
                 }
                 request.setAttribute("customersWithReservations", customersWithReservations);
                 request.setAttribute("selectedLineName", lineName);
-                request.setAttribute("selectedDate", travelDate);
+                request.setAttribute("selectedDate", travelDateStr);
                 request.getRequestDispatcher("rep_customer_reservations_report.jsp").forward(request, response);
 
             } else {
@@ -153,6 +170,12 @@ public class RepReportsServlet extends HttpServlet {
             message = "Database error: " + e.getMessage();
             request.setAttribute("message", message);
             request.setAttribute("messageType", messageType);
+            // Pass back selected values in case of an error for form retention
+            request.setAttribute("selectedStationId", request.getParameter("stationId"));
+            request.setAttribute("searchType", request.getParameter("searchType"));
+            request.setAttribute("selectedLineName", request.getParameter("lineName"));
+            request.setAttribute("selectedDate", request.getParameter("travelDate"));
+
             // Forward back to the appropriate JSP based on reportType if an error occurs
             if ("stationSchedules".equals(reportType)) {
                 request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
@@ -163,15 +186,24 @@ public class RepReportsServlet extends HttpServlet {
             }
         } catch (NumberFormatException e) {
             e.printStackTrace();
-            message = "Invalid station ID format.";
+            message = "Invalid station ID format. Please ensure a valid station is selected.";
             request.setAttribute("message", message);
             request.setAttribute("messageType", messageType);
+            // Pass back selected values in case of an error for form retention
+            request.setAttribute("selectedStationId", request.getParameter("stationId"));
+            request.setAttribute("searchType", request.getParameter("searchType"));
             request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
             message = "An unexpected error occurred: " + e.getMessage();
             request.setAttribute("message", message);
             request.setAttribute("messageType", messageType);
+            // Pass back selected values in case of an error for form retention
+            request.setAttribute("selectedStationId", request.getParameter("stationId"));
+            request.setAttribute("searchType", request.getParameter("searchType"));
+            request.setAttribute("selectedLineName", request.getParameter("lineName"));
+            request.setAttribute("selectedDate", request.getParameter("travelDate"));
+
             if ("stationSchedules".equals(reportType)) {
                 request.getRequestDispatcher("rep_station_schedules_report.jsp").forward(request, response);
             } else if ("customerReservations".equals(reportType)) {
@@ -186,7 +218,6 @@ public class RepReportsServlet extends HttpServlet {
         }
     }
 
-    // Helper method to get station name by ID (for displaying in report title)
     private String getStationNameById(Connection conn, int stationId) throws SQLException {
         PreparedStatement ps = null;
         ResultSet rs = null;

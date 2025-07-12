@@ -15,19 +15,25 @@
 
   // Base SELECT + FROM + JOINS
   String selectCols =
-      "r.id           AS id,   r.train        AS train,  r.line_name      AS line,"
-    + "r.travel_date  AS travelDate,  r.departure_time AS time,"
-    + "o.name         AS origin, d.name         AS destination,"
-    + "r.seat_id      AS seat,  r.passenger_type AS passengerType,"
-    + "r.trip_type    AS tripType,  r.total_fare   AS fare,"
-    + "r.reservation_date AS bookedOn";
+      "r.id           AS id,"
+    + " u.username     AS username,"
+    + " r.train        AS train,"
+    + " r.line_name    AS line,"
+    + " r.travel_date  AS travelDate,"
+    + " r.departure_time AS time,"
+    + " o.name         AS origin,"
+    + " d.name         AS destination,"
+    + " r.seat_id      AS seat,"
+    + " r.passenger_type AS passengerType,"
+    + " r.trip_type    AS tripType,"
+    + " r.total_fare   AS fare,"
+    + " r.reservation_date AS bookedOn";
   String fromJoins =
       "reservations r"
-    + " JOIN users   u ON r.user_id              = u.id"
-    + " JOIN station o ON r.origin_station_id    = o.station_id"
+    + " JOIN users   u ON r.user_id                = u.CustomerID"
+    + " JOIN station o ON r.origin_station_id      = o.station_id"
     + " JOIN station d ON r.destination_station_id = d.station_id";
 
-  // Build SQL for current and past
   String currentSql = "SELECT " + selectCols + " FROM " + fromJoins
                     + " WHERE " + (isAdmin
                         ? "r.travel_date >= CURDATE()"
@@ -50,18 +56,19 @@
     try (ResultSet rs = psCurr.executeQuery()) {
       while (rs.next()) {
         Map<String,Object> row = new HashMap<>();
-        row.put("id",             rs.getInt       ("id"));
-        row.put("train",          rs.getString    ("train"));
-        row.put("line",           rs.getString    ("line"));
-        row.put("travelDate",     rs.getDate      ("travelDate"));
-        row.put("time",           rs.getTime      ("time"));
-        row.put("origin",         rs.getString    ("origin"));
-        row.put("destination",    rs.getString    ("destination"));
-        row.put("seat",           rs.getString    ("seat"));
-        row.put("passengerType",  rs.getString    ("passengerType"));
-        row.put("tripType",       rs.getString    ("tripType"));
-        row.put("fare",           rs.getBigDecimal("fare"));
-        row.put("bookedOn",       rs.getDate      ("bookedOn"));
+        row.put("username",     rs.getString   ("username"));
+        row.put("id",           rs.getInt      ("id"));
+        row.put("train",        rs.getString   ("train"));
+        row.put("line",         rs.getString   ("line"));
+        row.put("travelDate",   rs.getDate     ("travelDate"));
+        row.put("time",         rs.getTime     ("time"));
+        row.put("origin",       rs.getString   ("origin"));
+        row.put("destination",  rs.getString   ("destination"));
+        row.put("seat",         rs.getString   ("seat"));
+        row.put("passengerType",rs.getString   ("passengerType"));
+        row.put("tripType",     rs.getString   ("tripType"));
+        row.put("fare",         rs.getBigDecimal("fare"));
+        row.put("bookedOn",     rs.getDate     ("bookedOn"));
         currentList.add(row);
       }
     }
@@ -70,18 +77,19 @@
     try (ResultSet rs = psPast.executeQuery()) {
       while (rs.next()) {
         Map<String,Object> row = new HashMap<>();
-        row.put("id",             rs.getInt       ("id"));
-        row.put("train",          rs.getString    ("train"));
-        row.put("line",           rs.getString    ("line"));
-        row.put("travelDate",     rs.getDate      ("travelDate"));
-        row.put("time",           rs.getTime      ("time"));
-        row.put("origin",         rs.getString    ("origin"));
-        row.put("destination",    rs.getString    ("destination"));
-        row.put("seat",           rs.getString    ("seat"));
-        row.put("passengerType",  rs.getString    ("passengerType"));
-        row.put("tripType",       rs.getString    ("tripType"));
-        row.put("fare",           rs.getBigDecimal("fare"));
-        row.put("bookedOn",       rs.getDate      ("bookedOn"));
+        row.put("username",     rs.getString   ("username"));
+        row.put("id",           rs.getInt      ("id"));
+        row.put("train",        rs.getString   ("train"));
+        row.put("line",         rs.getString   ("line"));
+        row.put("travelDate",   rs.getDate     ("travelDate"));
+        row.put("time",         rs.getTime     ("time"));
+        row.put("origin",       rs.getString   ("origin"));
+        row.put("destination",  rs.getString   ("destination"));
+        row.put("seat",         rs.getString   ("seat"));
+        row.put("passengerType",rs.getString   ("passengerType"));
+        row.put("tripType",     rs.getString   ("tripType"));
+        row.put("fare",         rs.getBigDecimal("fare"));
+        row.put("bookedOn",     rs.getDate     ("bookedOn"));
         pastList.add(row);
       }
     }
@@ -227,7 +235,7 @@
         <%
           if (pastList.isEmpty()) {
         %>
-        <tr><td colspan="<%= (isAdmin ? 13 : 13) %>">No past reservations.</td></tr>
+        <tr><td colspan="13">No past reservations.</td></tr>
         <%
           } else {
             for (Map<String,Object> r : pastList) {
@@ -259,5 +267,6 @@
   </div>
 </body>
 </html>
+
 
 

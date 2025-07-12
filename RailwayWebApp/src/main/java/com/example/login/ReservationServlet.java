@@ -63,14 +63,14 @@ public class ReservationServlet extends HttpServlet {
         int    tripMult      = "Round-trip".equals(tripType) ? 2 : 1;
 
         try (Connection conn = DatabaseUtils.getConnection()) {
-            // 1) find user_id
+            // 1) find user_id (now CustomerID)
             int userId;
             try (PreparedStatement pu = conn.prepareStatement(
-                     "SELECT id FROM users WHERE username = ?")) {
+                     "SELECT CustomerID FROM users WHERE username = ?")) {
                 pu.setString(1, username);
                 try (ResultSet ru = pu.executeQuery()) {
-                    if (!ru.next()) throw new ServletException("Unknown user");
-                    userId = ru.getInt("id");
+                    if (!ru.next()) throw new ServletException("Unknown user: " + username);
+                    userId = ru.getInt("CustomerID");
                 }
             }
 
@@ -97,7 +97,7 @@ public class ReservationServlet extends HttpServlet {
                 pf.setInt(3, destination);
                 pf.setInt(4, origin);
                 try (ResultSet rf = pf.executeQuery()) {
-                    if (!rf.next()) throw new ServletException("No fare defined");
+                    if (!rf.next()) throw new ServletException("No fare defined for selected route");
                     baseFare = rf.getBigDecimal("fare");
                 }
             }
@@ -116,7 +116,7 @@ public class ReservationServlet extends HttpServlet {
                 .multiply(BigDecimal.valueOf(tripMult))
                 .setScale(2, BigDecimal.ROUND_HALF_UP);
 
-            // 6) insert reservation (now including passenger_type & trip_type)
+            // 6) insert reservation
             String insertSql = 
                 "INSERT INTO reservations ("
               + " user_id, train, line_name, travel_date,"
@@ -136,7 +136,7 @@ public class ReservationServlet extends HttpServlet {
                 pi.setInt       (i++, destination);
                 pi.setString    (i++, seatId);
                 pi.setString    (i++, passengerType);
-                pi.setString    (i++, tripType);          // ← newly added
+                pi.setString    (i++, tripType);
                 pi.setBigDecimal(i++, totalFare);
                 pi.setDate      (i,   new Date(System.currentTimeMillis()));
                 pi.executeUpdate();
@@ -149,4 +149,5 @@ public class ReservationServlet extends HttpServlet {
         }
     }
 }
+
 

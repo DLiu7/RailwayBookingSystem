@@ -7,8 +7,7 @@
     }
     String currentUser = (String) session.getAttribute("user");
     String userRole = (String) session.getAttribute("role");
-    boolean isCustomerRep = "customer_rep".equalsIgnoreCase(userRole);
-    boolean isAdmin = "admin".equalsIgnoreCase(userRole); // Admins can also reply
+    boolean isCustomerRep = "customer_representative".equalsIgnoreCase(userRole);
 
     // Message for success/error (e.g., after asking question or replying)
     String message = (String) request.getAttribute("message");
@@ -18,7 +17,7 @@
     String searchTerm = request.getParameter("searchTerm");
     String searchSqlClause = "";
     if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-        searchSqlClause = " WHERE q.subject LIKE ? OR q.question_text LIKE ?";
+        searchSqlClause = " WHERE q.Subject LIKE ? OR q.QuestionText LIKE ?";
     }
 
     // Pagination/Limiting for questions
@@ -35,9 +34,9 @@
         conn = DatabaseUtils.getConnection();
 
         // Fetch questions with a LIMIT clause
-        String questionsSql = "SELECT q.id, q.subject, q.question_text, q.timestamp, u.username, q.status " +
-                              "FROM questions q JOIN users u ON q.user_id = u.id" + searchSqlClause +
-                              " ORDER BY q.timestamp DESC LIMIT ?";
+        String questionsSql = "SELECT q.QuestionID, q.Subject, q.QuestionText, q.Timestamp, u.Username, q.Status " +
+                              "FROM questions q JOIN users u ON q.CustomerID = u.CustomerID" + searchSqlClause +
+                              " ORDER BY q.Timestamp DESC LIMIT ?";
         ps = conn.prepareStatement(questionsSql);
         int paramIndex = 1;
         if (searchTerm != null && !searchTerm.trim().isEmpty()) {
@@ -48,12 +47,12 @@
         rs = ps.executeQuery();
 
         while (rs.next()) {
-            int questionId = rs.getInt("id");
-            String subject = rs.getString("subject");
-            String questionText = rs.getString("question_text");
-            Timestamp questionTimestamp = rs.getTimestamp("timestamp");
-            String questionerUsername = rs.getString("username");
-            String status = rs.getString("status");
+            int questionId = rs.getInt("QuestionID");
+            String subject = rs.getString("Subject");
+            String questionText = rs.getString("QuestionText");
+            Timestamp questionTimestamp = rs.getTimestamp("Timestamp");
+            String questionerUsername = rs.getString("Username");
+            String status = rs.getString("Status");
 
             List<Object> questionData = new ArrayList<>();
             questionData.add(questionId);
@@ -63,26 +62,26 @@
             questionData.add(questionerUsername);
             questionData.add(status);
 
-            // Fetch replies for this question
+            // Fetch replies for this question - now strictly joining with employees table
             List<List<Object>> repliesForQuestion = new ArrayList<>();
             PreparedStatement psReplies = conn.prepareStatement(
-                "SELECT r.id, r.reply_text, r.timestamp, u.username " +
-                "FROM replies r JOIN users u ON r.user_id = u.id " +
-                "WHERE r.question_id = ? ORDER BY r.timestamp ASC");
+                "SELECT r.ReplyID, r.ReplyText, r.Timestamp, e.username AS replierUsername " + // Get employee's username
+                "FROM replies r JOIN employees e ON r.EmployeeSSN_FK = e.ssn " + // Direct join on ssn
+                "WHERE r.QuestionID_FK = ? ORDER BY r.Timestamp ASC");
             psReplies.setInt(1, questionId);
             ResultSet rsReplies = psReplies.executeQuery();
             while (rsReplies.next()) {
                 List<Object> replyData = new ArrayList<>();
-                replyData.add(rsReplies.getInt("id"));
-                replyData.add(rsReplies.getString("reply_text"));
-                replyData.add(rsReplies.getTimestamp("timestamp"));
-                replyData.add(rsReplies.getString("username"));
+                replyData.add(rsReplies.getInt("ReplyID"));
+                replyData.add(rsReplies.getString("ReplyText"));
+                replyData.add(rsReplies.getTimestamp("Timestamp"));
+                replyData.add(rsReplies.getString("replierUsername")); // Use the alias
                 repliesForQuestion.add(replyData);
             }
             rsReplies.close();
             psReplies.close();
 
-            questionData.add(repliesForQuestion); // Add replies list to question data
+            questionData.add(repliesForQuestion);
             questionsWithReplies.add(questionData);
         }
 
@@ -106,13 +105,12 @@
   <style>
     * { box-sizing: border-box; margin:0; padding:0; }
     html, body {
-      height: 100%; /* Keep for consistent background sizing */
+      height: 100%;
       margin: 0;
       padding: 0;
       font-family: 'Roboto', sans-serif;
       background: url('chatroom.jpg') no-repeat center center fixed;
       background-size: cover;
-      /* Removed centering flex properties to allow content to flow from top */
     }
 
     .container {
@@ -123,10 +121,10 @@
       width: 95%;
       max-width: 900px;
       padding: 32px;
-      margin: 20px auto; /* Reduced top/bottom margin, auto centers horizontally */
+      margin: 20px auto;
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - 40px); /* Make container take up most of viewport height */
+      min-height: calc(100vh - 40px);
       animation: fadeIn 0.8s ease-out;
     }
 
@@ -153,7 +151,6 @@
       color: white;
     }
 
-    /* Search and Ask Question forms */
     .form-section {
         background: rgba(0,0,0,0.3);
         padding: 25px;
@@ -217,10 +214,9 @@
         background: #5a6268;
     }
 
-    /* Forum Questions Display */
     .forum-questions {
         margin-top: 30px;
-        flex-grow: 1; /* Allows this section to take up available vertical space */
+        flex-grow: 1;
     }
     .question-card {
         background: rgba(255,255,255,0.08);
@@ -250,27 +246,25 @@
         line-height: 1.5;
         margin-bottom: 15px;
     }
-    /* Status display for customers */
     .question-status {
         font-weight: 500;
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 0.8rem;
-        margin-left: 10px; /* Space between subject and status */
+        margin-left: 10px;
     }
     .question-status.Open {
-        background-color: #e74c3c; /* Red */
+        background-color: #e74c3c;
     }
     .question-status.Answered {
-        background-color: #2ecc71; /* Green */
+        background-color: #2ecc71;
     }
     .question-status.Closed {
-        background-color: #6c757d; /* Gray */
+        background-color: #6c757d;
     }
 
-    /* Reply Button for Reps */
     .btn-reply {
-        background-color: #007bff; /* Blue for reply button */
+        background-color: #007bff;
         color: white;
         padding: 6px 12px;
         border-radius: 15px;
@@ -284,7 +278,6 @@
         background-color: #0056b3;
     }
 
-    /* Replies Styling */
     .replies-section {
         margin-top: 15px;
         padding-left: 20px;
@@ -307,26 +300,23 @@
         line-height: 1.4;
     }
 
-    /* Reply Form (hidden by default) */
     .reply-form-container {
         margin-top: 15px;
         padding-top: 15px;
         border-top: 1px solid rgba(255,255,255,0.1);
-        /* Ensure the form takes full width */
-        width: 100%; /* Added */
+        width: 100%;
     }
     .reply-form-container textarea {
         margin-bottom: 10px;
-        /* Make textarea match other input fields */
-        width: 100%; /* Added */
-        padding: 10px; /* Added */
-        border: 1px solid rgba(255,255,255,0.3); /* Added */
-        border-radius: 5px; /* Added */
-        background: rgba(255,255,255,0.1); /* Added */
-        color: #fff; /* Added */
-        font-size: 1rem; /* Added */
-        min-height: 80px; /* Keep existing */
-        resize: vertical; /* Keep existing */
+        width: 100%;
+        padding: 10px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 5px;
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+        font-size: 1rem;
+        min-height: 80px;
+        resize: vertical;
     }
     .reply-form-container button {
         width: auto;
@@ -382,26 +372,23 @@
         <% for (List<Object> qData : questionsWithReplies) { %>
           <div class="question-card">
             <div class="question-header">
-              <h3><%= qData.get(1) %></h3> <%-- Subject --%>
-              <%-- Conditional display of status vs. reply button --%>
-              <% if (isCustomerRep || isAdmin) { %>
+              <h3><%= qData.get(1) %></h3>
+              <% if (isCustomerRep) { %>
                 <span class="question-status <%= qData.get(5) %>"><%= qData.get(5) %></span>
-                <%-- Show Reply button if question is Open --%>
                 <% if ("Open".equals(qData.get(5))) { %>
                     <button type="button" class="btn-reply" onclick="toggleReplyForm(<%= qData.get(0) %>)">Reply</button>
                 <% } %>
               <% } else { %>
-                <span class="question-status <%= qData.get(5) %>"><%= qData.get(5) %></span> <%-- Status for customers --%>
+                <span class="question-status <%= qData.get(5) %>"><%= qData.get(5) %></span>
               <% } %>
             </div>
             <div class="question-meta">
-              Asked by <%= qData.get(4) %> on <%= qData.get(3) %> <%-- Questioner Username, Timestamp --%>
+              Asked by <%= qData.get(4) %> on <%= qData.get(3) %>
             </div>
             <div class="question-body">
-              <%= qData.get(2) %> <%-- Question Text --%>
+              <%= qData.get(2) %>
             </div>
 
-            <%-- Replies Section --%>
             <% List<List<Object>> replies = (List<List<Object>>) qData.get(6); %>
             <% if (!replies.isEmpty()) { %>
               <div class="replies-section">
@@ -419,12 +406,11 @@
               </div>
             <% } %>
 
-            <%-- Reply Form (hidden by default, toggled by JS) --%>
-            <% if (isCustomerRep || isAdmin) { %>
+            <% if (isCustomerRep) { %>
               <div class="reply-form-container" id="replyForm_<%= qData.get(0) %>" style="display:none;">
                 <form action="customerService" method="post">
                   <input type="hidden" name="action" value="replyQuestion">
-                  <input type="hidden" name="questionId" value="<%= qData.get(0) %>"> <%-- Question ID --%>
+                  <input type="hidden" name="questionId" value="<%= qData.get(0) %>">
                   <textarea name="replyText" placeholder="Type your reply here..." required></textarea>
                   <button type="submit" class="btn">Submit Reply</button>
                 </form>
@@ -435,11 +421,16 @@
       <% } %>
     </div>
 
-    <a href="welcome.jsp" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
+    <%
+        String backLink = "welcome.jsp";
+        if (isCustomerRep) {
+            backLink = "rep_dashboard.jsp";
+        }
+    %>
+    <a href="<%= backLink %>" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
   </div>
 
   <script>
-    // Function to toggle reply form visibility
     function toggleReplyForm(questionId) {
         const form = document.getElementById('replyForm_' + questionId);
         if (form.style.display === 'none') {

@@ -6,7 +6,7 @@
         return;
     }
     String userRole = (String) session.getAttribute("role");
-    if (!"admin".equalsIgnoreCase(userRole) && !"customer_rep".equalsIgnoreCase(userRole)) {
+    if (!"admin".equalsIgnoreCase(userRole) && !"customer_representative".equalsIgnoreCase(userRole)) {
         response.sendRedirect("welcome.jsp"); // Redirect if not authorized
         return;
     }
@@ -43,6 +43,7 @@
     // Report results (if available from servlet)
     List<List<String>> schedules = (List<List<String>>) request.getAttribute("schedules");
     String selectedStationName = (String) request.getAttribute("selectedStationName");
+    String selectedStationId = (String) request.getAttribute("selectedStationId"); // Used to re-select dropdown
     String searchType = (String) request.getAttribute("searchType");
 %>
 <!DOCTYPE html>
@@ -59,7 +60,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Roboto', sans-serif;
-      background: url('TR7.jpg') no-repeat center center fixed; /* New background image */
+      background: url('TR7.jpg') no-repeat center center fixed;
       background-size: cover;
     }
 
@@ -69,7 +70,7 @@
       border-radius: 8px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.4);
       width: 95%;
-      max-width: 1000px; /* Wider for reports */
+      max-width: 1000px;
       padding: 32px;
       margin: 20px auto;
       display: flex;
@@ -223,7 +224,7 @@
           <select name="stationId" id="stationSelect" required>
             <option value="" disabled selected>Select a Station...</option>
             <% for (String[] station : stations) { %>
-              <option value="<%= station[0] %>" <%= (selectedStationName != null && selectedStationName.equals(station[1])) ? "selected" : "" %>>
+              <option value="<%= station[0] %>" <%= (selectedStationId != null && selectedStationId.equals(station[0])) ? "selected" : "" %>>
                 <%= station[1] %>
               </option>
             <% } %>
@@ -272,7 +273,7 @@
       <% } %>
     <% } %>
 
-    <a href="welcome.jsp" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
+    <a href="rep_dashboard.jsp" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
   </div>
 </body>
 </html>

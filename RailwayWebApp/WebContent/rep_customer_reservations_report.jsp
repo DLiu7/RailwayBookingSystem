@@ -6,7 +6,7 @@
         return;
     }
     String userRole = (String) session.getAttribute("role");
-    if (!"admin".equalsIgnoreCase(userRole) && !"customer_rep".equalsIgnoreCase(userRole)) {
+    if (!"admin".equalsIgnoreCase(userRole) && !"customer_representative".equalsIgnoreCase(userRole)) {
         response.sendRedirect("welcome.jsp"); // Redirect if not authorized
         return;
     }
@@ -59,7 +59,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Roboto', sans-serif;
-      background: url('TR8.jpg') no-repeat center center fixed; /* New background image */
+      background: url('TR8.jpg') no-repeat center center fixed;
       background-size: cover;
     }
 
@@ -69,7 +69,7 @@
       border-radius: 8px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.4);
       width: 95%;
-      max-width: 900px; /* Standard width */
+      max-width: 900px;
       padding: 32px;
       margin: 20px auto;
       display: flex;
@@ -272,7 +272,7 @@
       <% } %>
     <% } %>
 
-    <a href="welcome.jsp" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
+    <a href="rep_dashboard.jsp" class="btn btn-secondary" style="margin-top: 30px;">Back to Dashboard</a>
   </div>
 </body>
 </html>

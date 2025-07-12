@@ -26,7 +26,9 @@
       color:#fff; text-align:center;
       animation:fadeIn .8s ease-out;
     }
-    .register-card h2 { margin-bottom:24px; font-weight:500; font-size:1.5rem; }
+    .register-card h2 { 
+      margin-bottom:24px; font-weight:500; font-size:1.5rem; 
+    }
     .input-group { position:relative; margin-bottom:24px; }
     .input-group input {
       width:100%; padding:12px 0;
@@ -42,7 +44,8 @@
     }
     .input-group input:focus + label,
     .input-group input:not(:placeholder-shown) + label {
-      transform: translateY(-24px); font-size:12px; color:#fff;
+      transform: translateY(-24px);
+      font-size:12px; color:#fff;
     }
     .input-group input:focus {
       outline:none; border-bottom-color:#fff;
@@ -79,6 +82,18 @@
     <h2>Create Your Account</h2>
     <form action="register" method="post">
       <div class="input-group">
+        <input type="text" name="firstName" id="fn" placeholder=" " required>
+        <label for="fn">First Name</label>
+      </div>
+      <div class="input-group">
+        <input type="text" name="lastName" id="ln" placeholder=" " required>
+        <label for="ln">Last Name</label>
+      </div>
+      <div class="input-group">
+        <input type="email" name="email" id="em" placeholder=" " required>
+        <label for="em">Email</label>
+      </div>
+      <div class="input-group">
         <input type="text" name="username" id="u" placeholder=" " required>
         <label for="u">Username</label>
       </div>
@@ -93,8 +108,6 @@
 
       <% if (request.getAttribute("error") != null) { %>
         <div class="message error"><%= request.getAttribute("error") %></div>
-      <% } else if (request.getAttribute("success") != null) { %>
-        <div class="message success"><%= request.getAttribute("success") %></div>
       <% } %>
 
       <button type="submit">Register</button>

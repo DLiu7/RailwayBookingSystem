@@ -5,7 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp; // Import Timestamp
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import javax.servlet.ServletException;
@@ -13,7 +13,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession; // Import HttpSession
+import javax.servlet.http.HttpSession;
 
 @WebServlet("/manageSchedule") // Maps this servlet to the URL /manageSchedule
 public class ManageScheduleServlet extends HttpServlet {
@@ -27,7 +27,7 @@ public class ManageScheduleServlet extends HttpServlet {
         String userRole = (String) session.getAttribute("role");
 
         // Protect servlet - only accessible by Customer Reps or Admin
-        if (session.getAttribute("user") == null || (!"admin".equalsIgnoreCase(userRole) && !"customer_rep".equalsIgnoreCase(userRole))) {
+        if (session.getAttribute("user") == null || (!"admin".equalsIgnoreCase(userRole) && !"customer_representative".equalsIgnoreCase(userRole))) {
             response.sendRedirect("login2.jsp"); // Not logged in or not authorized
             return;
         }
@@ -38,24 +38,23 @@ public class ManageScheduleServlet extends HttpServlet {
 
         Connection conn = null;
         PreparedStatement ps = null;
-        ResultSet rs = null; // Used for fetching train/station IDs
 
         try {
             conn = DatabaseUtils.getConnection();
 
             if ("add".equals(action)) {
                 // --- ADD NEW SCHEDULE ---
-                String trainName = request.getParameter("trainName");
-                String originStationId = request.getParameter("originStation");
-                String destinationStationId = request.getParameter("destinationStation");
+                String trainIdStr = request.getParameter("trainId");
+                String originStationIdStr = request.getParameter("originStationId");
+                String destinationStationIdStr = request.getParameter("destinationStationId");
                 String departureTimeStr = request.getParameter("departureTime");
                 String arrivalTimeStr = request.getParameter("arrivalTime");
                 String fareStr = request.getParameter("fare");
 
                 // Input validation
-                if (trainName == null || trainName.isEmpty() ||
-                    originStationId == null || originStationId.isEmpty() ||
-                    destinationStationId == null || destinationStationId.isEmpty() ||
+                if (trainIdStr == null || trainIdStr.isEmpty() ||
+                    originStationIdStr == null || originStationIdStr.isEmpty() ||
+                    destinationStationIdStr == null || destinationStationIdStr.isEmpty() ||
                     departureTimeStr == null || departureTimeStr.isEmpty() ||
                     arrivalTimeStr == null || arrivalTimeStr.isEmpty() ||
                     fareStr == null || fareStr.isEmpty()) {
@@ -66,38 +65,27 @@ public class ManageScheduleServlet extends HttpServlet {
                     return;
                 }
 
+                // Convert string IDs to int
+                int trainId = Integer.parseInt(trainIdStr);
+                int originStationId = Integer.parseInt(originStationIdStr);
+                int destinationStationId = Integer.parseInt(destinationStationIdStr);
+                double fare = Double.parseDouble(fareStr);
+
+
                 // Convert datetime-local string to SQL TIMESTAMP format
-                // Example: "2025-07-15T08:00" -> "2025-07-15 08:00:00"
                 DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
                 LocalDateTime departureLDT = LocalDateTime.parse(departureTimeStr, inputFormatter);
                 LocalDateTime arrivalLDT = LocalDateTime.parse(arrivalTimeStr, inputFormatter);
-
-                // Get train_id from train name
-                int trainId = -1;
-                ps = conn.prepareStatement("SELECT id FROM trains WHERE name = ?");
-                ps.setString(1, trainName);
-                rs = ps.executeQuery();
-                if (rs.next()) {
-                    trainId = rs.getInt("id");
-                } else {
-                    message = "Invalid train name selected.";
-                    request.setAttribute("message", message);
-                    request.setAttribute("messageType", messageType);
-                    request.getRequestDispatcher("rep_manage_schedules.jsp").forward(request, response);
-                    return;
-                }
-                rs.close();
-                ps.close();
 
                 // Insert into train_schedules
                 String insertSql = "INSERT INTO train_schedules (train_id, origin_station_id, destination_station_id, departure_time, arrival_time, fare) VALUES (?, ?, ?, ?, ?, ?)";
                 ps = conn.prepareStatement(insertSql);
                 ps.setInt(1, trainId);
-                ps.setInt(2, Integer.parseInt(originStationId));
-                ps.setInt(3, Integer.parseInt(destinationStationId));
+                ps.setInt(2, originStationId);
+                ps.setInt(3, destinationStationId);
                 ps.setTimestamp(4, Timestamp.valueOf(departureLDT));
                 ps.setTimestamp(5, Timestamp.valueOf(arrivalLDT));
-                ps.setDouble(6, Double.parseDouble(fareStr));
+                ps.setDouble(6, fare);
 
                 int rowsAffected = ps.executeUpdate();
                 if (rowsAffected > 0) {
@@ -109,19 +97,19 @@ public class ManageScheduleServlet extends HttpServlet {
 
             } else if ("edit".equals(action)) {
                 // --- EDIT EXISTING SCHEDULE ---
-                String scheduleId = request.getParameter("scheduleId");
-                String trainName = request.getParameter("trainName");
-                String originStationId = request.getParameter("originStation");
-                String destinationStationId = request.getParameter("destinationStation");
+                String scheduleIdStr = request.getParameter("scheduleId");
+                String trainIdStr = request.getParameter("trainId");
+                String originStationIdStr = request.getParameter("originStationId");
+                String destinationStationIdStr = request.getParameter("destinationStationId");
                 String departureTimeStr = request.getParameter("departureTime");
                 String arrivalTimeStr = request.getParameter("arrivalTime");
                 String fareStr = request.getParameter("fare");
 
                 // Input validation
-                if (scheduleId == null || scheduleId.isEmpty() ||
-                    trainName == null || trainName.isEmpty() ||
-                    originStationId == null || originStationId.isEmpty() ||
-                    destinationStationId == null || destinationStationId.isEmpty() ||
+                if (scheduleIdStr == null || scheduleIdStr.isEmpty() ||
+                    trainIdStr == null || trainIdStr.isEmpty() ||
+                    originStationIdStr == null || originStationIdStr.isEmpty() ||
+                    destinationStationIdStr == null || destinationStationIdStr.isEmpty() ||
                     departureTimeStr == null || departureTimeStr.isEmpty() ||
                     arrivalTimeStr == null || arrivalTimeStr.isEmpty() ||
                     fareStr == null || fareStr.isEmpty()) {
@@ -132,36 +120,26 @@ public class ManageScheduleServlet extends HttpServlet {
                     return;
                 }
 
+                // Convert string IDs to int
+                int scheduleId = Integer.parseInt(scheduleIdStr);
+                int trainId = Integer.parseInt(trainIdStr);
+                int originStationId = Integer.parseInt(originStationIdStr);
+                int destinationStationId = Integer.parseInt(destinationStationIdStr);
+                double fare = Double.parseDouble(fareStr);
+
                 DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
                 LocalDateTime departureLDT = LocalDateTime.parse(departureTimeStr, inputFormatter);
                 LocalDateTime arrivalLDT = LocalDateTime.parse(arrivalTimeStr, inputFormatter);
 
-                // Get train_id from train name
-                int trainId = -1;
-                ps = conn.prepareStatement("SELECT id FROM trains WHERE name = ?");
-                ps.setString(1, trainName);
-                rs = ps.executeQuery();
-                if (rs.next()) {
-                    trainId = rs.getInt("id");
-                } else {
-                    message = "Invalid train name selected for edit.";
-                    request.setAttribute("message", message);
-                    request.setAttribute("messageType", messageType);
-                    request.getRequestDispatcher("rep_manage_schedules.jsp").forward(request, response);
-                    return;
-                }
-                rs.close();
-                ps.close();
-
                 String updateSql = "UPDATE train_schedules SET train_id = ?, origin_station_id = ?, destination_station_id = ?, departure_time = ?, arrival_time = ?, fare = ? WHERE id = ?";
                 ps = conn.prepareStatement(updateSql);
                 ps.setInt(1, trainId);
-                ps.setInt(2, Integer.parseInt(originStationId));
-                ps.setInt(3, Integer.parseInt(destinationStationId));
+                ps.setInt(2, originStationId);
+                ps.setInt(3, destinationStationId);
                 ps.setTimestamp(4, Timestamp.valueOf(departureLDT));
                 ps.setTimestamp(5, Timestamp.valueOf(arrivalLDT));
-                ps.setDouble(6, Double.parseDouble(fareStr));
-                ps.setInt(7, Integer.parseInt(scheduleId));
+                ps.setDouble(6, fare);
+                ps.setInt(7, scheduleId);
 
                 int rowsAffected = ps.executeUpdate();
                 if (rowsAffected > 0) {
@@ -173,8 +151,8 @@ public class ManageScheduleServlet extends HttpServlet {
 
             } else if ("delete".equals(action)) {
                 // --- DELETE SCHEDULE ---
-                String scheduleId = request.getParameter("scheduleId");
-                if (scheduleId == null || scheduleId.isEmpty()) {
+                String scheduleIdStr = request.getParameter("scheduleId");
+                if (scheduleIdStr == null || scheduleIdStr.isEmpty()) {
                     message = "Schedule ID is required for deletion.";
                     request.setAttribute("message", message);
                     request.setAttribute("messageType", messageType);
@@ -182,9 +160,11 @@ public class ManageScheduleServlet extends HttpServlet {
                     return;
                 }
 
+                int scheduleId = Integer.parseInt(scheduleIdStr);
+
                 String deleteSql = "DELETE FROM train_schedules WHERE id = ?";
                 ps = conn.prepareStatement(deleteSql);
-                ps.setInt(1, Integer.parseInt(scheduleId));
+                ps.setInt(1, scheduleId);
 
                 int rowsAffected = ps.executeUpdate();
                 if (rowsAffected > 0) {
@@ -203,13 +183,12 @@ public class ManageScheduleServlet extends HttpServlet {
             message = "Database error: " + e.getMessage();
         } catch (NumberFormatException e) {
             e.printStackTrace();
-            message = "Invalid number format for ID or Fare.";
+            message = "Invalid number format for ID or Fare. Please ensure all numerical inputs are valid.";
         } catch (Exception e) {
             e.printStackTrace();
             message = "An unexpected error occurred: " + e.getMessage();
         } finally {
             // Close resources
-            try { if (rs != null) rs.close(); } catch (SQLException e) { e.printStackTrace(); }
             try { if (ps != null) ps.close(); } catch (SQLException e) { e.printStackTrace(); }
             try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }

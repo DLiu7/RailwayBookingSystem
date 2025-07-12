@@ -16,15 +16,13 @@ import javax.servlet.http.HttpSession;
 public class CustomerServiceServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
-    // Handles POST requests for asking questions and replying
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
         HttpSession session = request.getSession();
-        String currentUser = (String) session.getAttribute("user");
-        String userRole = (String) session.getAttribute("role");
+        String currentUser = (String) session.getAttribute("user"); // Username
+        String userRole = (String) session.getAttribute("role");    // Role from session
 
-        // Redirect if not logged in
         if (currentUser == null) {
             response.sendRedirect("login2.jsp");
             return;
@@ -41,15 +39,30 @@ public class CustomerServiceServlet extends HttpServlet {
         try {
             conn = DatabaseUtils.getConnection();
 
-            // Get current user's ID
-            int currentUserId = -1;
-            ps = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+            // --- Get current user's ID based on their role ---
+            // CustomerID is int, Employee SSN is String. We will store the relevant ID here.
+            Integer customerId = null; // For customers
+            String employeeSsn = null; // For employees
+
+            String idQuerySql = "";
+
+            if ("customer_representative".equalsIgnoreCase(userRole)) {
+                idQuerySql = "SELECT ssn FROM employees WHERE Username = ?"; // Fetching SSN
+            } else { // Assume 'customer' role
+                idQuerySql = "SELECT CustomerID FROM users WHERE Username = ?";
+            }
+
+            ps = conn.prepareStatement(idQuerySql);
             ps.setString(1, currentUser);
             rs = ps.executeQuery();
             if (rs.next()) {
-                currentUserId = rs.getInt("id");
+                if ("customer_representative".equalsIgnoreCase(userRole)) {
+                    employeeSsn = rs.getString("ssn"); // Get SSN as String
+                } else {
+                    customerId = rs.getInt("CustomerID"); // Get CustomerID as Integer
+                }
             } else {
-                message = "User not found in database.";
+                message = "User ID not found in database for current role. Please log in again.";
                 request.setAttribute("message", message);
                 request.setAttribute("messageType", messageType);
                 request.getRequestDispatcher("customer_service_forum.jsp").forward(request, response);
@@ -60,6 +73,15 @@ public class CustomerServiceServlet extends HttpServlet {
 
             if ("askQuestion".equals(action)) {
                 // --- CUSTOMER ASKING A NEW QUESTION ---
+                // ONLY allow users with the 'customer' role to ask questions
+                if (!"customer".equalsIgnoreCase(userRole) || customerId == null) {
+                    message = "Only customers are allowed to ask new questions.";
+                    request.setAttribute("message", message);
+                    request.setAttribute("messageType", messageType);
+                    request.getRequestDispatcher("customer_service_forum.jsp").forward(request, response);
+                    return;
+                }
+
                 String subject = request.getParameter("subject");
                 String questionText = request.getParameter("questionText");
 
@@ -67,9 +89,10 @@ public class CustomerServiceServlet extends HttpServlet {
                     questionText == null || questionText.trim().isEmpty()) {
                     message = "Subject and question text are required.";
                 } else {
-                    String insertSql = "INSERT INTO questions (user_id, subject, question_text, status) VALUES (?, ?, ?, ?)";
+                    // Use customerId (Integer) for questions table
+                    String insertSql = "INSERT INTO questions (CustomerID, Subject, QuestionText, Status) VALUES (?, ?, ?, ?)";
                     ps = conn.prepareStatement(insertSql);
-                    ps.setInt(1, currentUserId);
+                    ps.setInt(1, customerId); // This is the CustomerID
                     ps.setString(2, subject);
                     ps.setString(3, questionText);
                     ps.setString(4, "Open"); // Default status for new questions
@@ -85,8 +108,8 @@ public class CustomerServiceServlet extends HttpServlet {
 
             } else if ("replyQuestion".equals(action)) {
                 // --- CUSTOMER REP REPLYING TO A QUESTION ---
-                // Only allow if user is a customer rep or admin
-                if (!"admin".equalsIgnoreCase(userRole) && !"customer_rep".equalsIgnoreCase(userRole)) {
+                // Only allow if user is a customer_representative AND employeeSsn is found
+                if (!"customer_representative".equalsIgnoreCase(userRole) || employeeSsn == null) {
                     message = "You are not authorized to reply to questions.";
                 } else {
                     String questionIdStr = request.getParameter("questionId");
@@ -98,20 +121,20 @@ public class CustomerServiceServlet extends HttpServlet {
                     } else {
                         int questionId = Integer.parseInt(questionIdStr);
 
-                        // Insert the reply
-                        String insertReplySql = "INSERT INTO replies (question_id, user_id, reply_text) VALUES (?, ?, ?)";
+                        // Use employeeSsn (String) for the replies table
+                        String insertReplySql = "INSERT INTO replies (QuestionID_FK, EmployeeSSN_FK, ReplyText) VALUES (?, ?, ?)";
                         ps = conn.prepareStatement(insertReplySql);
                         ps.setInt(1, questionId);
-                        ps.setInt(2, currentUserId); // The rep's user_id
+                        ps.setString(2, employeeSsn); // Use SSN (String) here
                         ps.setString(3, replyText);
                         int replyRowsAffected = ps.executeUpdate();
 
                         if (replyRowsAffected > 0) {
                             // Update question status to 'Answered'
-                            String updateStatusSql = "UPDATE questions SET status = 'Answered' WHERE id = ?";
+                            String updateStatusSql = "UPDATE questions SET Status = 'Answered' WHERE QuestionID = ?";
                             ps = conn.prepareStatement(updateStatusSql);
                             ps.setInt(1, questionId);
-                            ps.executeUpdate(); // No need to check rowsAffected for status update
+                            ps.executeUpdate();
 
                             message = "Reply submitted successfully!";
                             messageType = "success";
@@ -129,7 +152,7 @@ public class CustomerServiceServlet extends HttpServlet {
             message = "Database error: " + e.getMessage();
         } catch (NumberFormatException e) {
             e.printStackTrace();
-            message = "Invalid ID format.";
+            message = "Invalid ID format. Ensure IDs are correctly handled.";
         } catch (Exception e) {
             e.printStackTrace();
             message = "An unexpected error occurred: " + e.getMessage();
@@ -139,7 +162,6 @@ public class CustomerServiceServlet extends HttpServlet {
             try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
 
-        // Forward back to the forum page with the message
         request.setAttribute("message", message);
         request.setAttribute("messageType", messageType);
         request.getRequestDispatcher("customer_service_forum.jsp").forward(request, response);
