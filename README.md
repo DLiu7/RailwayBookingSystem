@@ -92,14 +92,8 @@ To get a local copy of this project up and running, follow these steps:
 
 ## Usage
 
-Once the application is running, you can log in using the following sample credentials from the `login_project` database:
+Once the application is running, you can log in using the sample credentials from the `login_project` database:
 
-* **Customer Example:**
-    * Username: `ROMAAN`
-    * Password: `secret`
-* **Admin Example:**
-    * Username: `ADMIN`
-    * Password: `admin`
 
 ## Database Schema
 
