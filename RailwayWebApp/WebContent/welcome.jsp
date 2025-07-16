@@ -89,6 +89,7 @@
     <div class="button-row">
     <a href="bookings.jsp"    class="btn-logout">View My Bookings</a>
     <a href="reservation.jsp" class="btn-logout">Make Reservation</a>    
+    <a href="customer_service_forum.jsp" class="btn-logout">Customer Service Forum</a>
     <a href="logout" class="btn-logout">Log Out</a>
   </div>
 </body>
