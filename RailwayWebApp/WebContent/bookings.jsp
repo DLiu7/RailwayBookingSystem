@@ -9,11 +9,10 @@
   String user     = (String) session.getAttribute("user");
   boolean isAdmin = "admin".equalsIgnoreCase(user);
 
-  // Prepare our two lists
+  // Prepare lists
   List<Map<String,Object>> currentList = new ArrayList<>();
   List<Map<String,Object>> pastList    = new ArrayList<>();
 
-  // Base SELECT + FROM + JOINS
   String selectCols =
       "r.id           AS id,"
     + " u.username     AS username,"
@@ -42,7 +41,6 @@
                     + " WHERE " + (isAdmin
                         ? "r.travel_date < CURDATE()"
                         : "u.username = ? AND r.travel_date < CURDATE()");
-
   try ( Connection conn = DatabaseUtils.getConnection();
         PreparedStatement psCurr = conn.prepareStatement(currentSql);
         PreparedStatement psPast = conn.prepareStatement(pastSql) ) {
@@ -52,7 +50,6 @@
       psPast.setString(1, user);
     }
 
-    // Fetch current
     try (ResultSet rs = psCurr.executeQuery()) {
       while (rs.next()) {
         Map<String,Object> row = new HashMap<>();
@@ -73,7 +70,6 @@
       }
     }
 
-    // Fetch past
     try (ResultSet rs = psPast.executeQuery()) {
       while (rs.next()) {
         Map<String,Object> row = new HashMap<>();
@@ -110,7 +106,8 @@
   <style>
     * { box-sizing:border-box; margin:0; padding:0 }
     html, body {
-      height:100%; background:url('TR1.jpg') center/cover no-repeat;
+      height:100%; 
+      background:url('TR1.jpg') center/cover no-repeat;
       font-family:'Roboto',sans-serif;
     }
     .container {
@@ -176,47 +173,56 @@
         <tr>
           <% if (isAdmin) { %><th>User</th><% } %>
           <th>Res.ID</th><th>Train</th><th>Line</th>
-          <th>Date</th><th>Time</th><th>Origin</th><th>Destination</th>
+          <th>Date</th>
+          <th>Departs At</th><th>Arrives At</th>
+          <th>Origin</th><th>Destination</th>
           <th>Seat</th><th>Passenger Type</th><th>Trip Type</th>
           <th>Fare</th><th>Booked On</th>
           <% if (!isAdmin) { %><th>Action</th><% } %>
         </tr>
-        <%
-          if (currentList.isEmpty()) {
-        %>
-        <tr><td colspan="<%= (isAdmin ? 13 : 14) %>">No current reservations.</td></tr>
-        <%
-          } else {
+        <% if (currentList.isEmpty()) { %>
+          <tr>
+            <td colspan="<%= (isAdmin? 15 : 16) %>">No current reservations.</td>
+          </tr>
+        <% } else {
             for (Map<String,Object> r : currentList) {
+              String line = (String) r.get("line");
+              String origin = (String) r.get("origin");
+              String dest = (String) r.get("destination");
+              Time dbTime = (Time) r.get("time");
+              String dbTimeStr = dbTime.toString().substring(0,5);
         %>
         <tr>
-          <% if (isAdmin) { %>
-            <td><%= r.get("username") %></td>
-          <% } %>
-          <td><%= r.get("id")            %></td>
-          <td><%= r.get("train")         %></td>
-          <td><%= r.get("line")          %></td>
-          <td><%= r.get("travelDate")    %></td>
-          <td><%= r.get("time")          %></td>
-          <td><%= r.get("origin")        %></td>
-          <td><%= r.get("destination")   %></td>
-          <td><%= r.get("seat")          %></td>
+          <% if (isAdmin) { %><td><%= r.get("username") %></td><% } %>
+          <td><%= r.get("id") %></td>
+          <td><%= r.get("train") %></td>
+          <td><%= line %></td>
+          <td><%= r.get("travelDate") %></td>
+          <td class="depart-time"
+              data-line="<%= line %>"
+              data-origin="<%= origin %>"
+              data-destination="<%= dest %>"
+              data-time="<%= dbTimeStr %>">--:--</td>
+          <td class="arrival-time">--:--</td>
+          <td><%= origin %></td>
+          <td><%= dest %></td>
+          <td><%= r.get("seat") %></td>
           <td><%= r.get("passengerType") %></td>
-          <td><%= r.get("tripType")      %></td>
-          <td>$<%= r.get("fare")         %></td>
-          <td><%= r.get("bookedOn")      %></td>
+          <td><%= r.get("tripType") %></td>
+          <td>$<%= r.get("fare") %></td>
+          <td><%= r.get("bookedOn") %></td>
           <% if (!isAdmin) { %>
-          <td>
-            <form method="post" action="reserve">
-              <input type="hidden" name="action"        value="cancel">
-              <input type="hidden" name="reservationId" value="<%= r.get("id") %>">
-              <button type="submit" class="btn-cancel">Cancel</button>
-            </form>
-          </td>
+            <td>
+              <form method="post" action="reserve">
+                <input type="hidden" name="action"        value="cancel">
+                <input type="hidden" name="reservationId" value="<%= r.get("id") %>">
+                <button type="submit" class="btn-cancel">Cancel</button>
+              </form>
+            </td>
           <% } %>
         </tr>
         <%   }
-          }
+           }
         %>
       </table>
     </div>
@@ -228,45 +234,103 @@
         <tr>
           <% if (isAdmin) { %><th>User</th><% } %>
           <th>Res.ID</th><th>Train</th><th>Line</th>
-          <th>Date</th><th>Time</th><th>Origin</th><th>Destination</th>
+          <th>Date</th>
+          <th>Departs At</th><th>Arrives At</th>
+          <th>Origin</th><th>Destination</th>
           <th>Seat</th><th>Passenger Type</th><th>Trip Type</th>
           <th>Fare</th><th>Booked On</th>
         </tr>
-        <%
-          if (pastList.isEmpty()) {
-        %>
-        <tr><td colspan="13">No past reservations.</td></tr>
-        <%
-          } else {
+        <% if (pastList.isEmpty()) { %>
+          <tr><td colspan="<%= (isAdmin? 15 : 15) %>">No past reservations.</td></tr>
+        <% } else {
             for (Map<String,Object> r : pastList) {
+              String line = (String) r.get("line");
+              String origin = (String) r.get("origin");
+              String dest = (String) r.get("destination");
+              Time dbTime = (Time) r.get("time");
+              String dbTimeStr = dbTime.toString().substring(0,5);
         %>
         <tr>
-          <% if (isAdmin) { %>
-            <td><%= r.get("username") %></td>
-          <% } %>
-          <td><%= r.get("id")            %></td>
-          <td><%= r.get("train")         %></td>
-          <td><%= r.get("line")          %></td>
-          <td><%= r.get("travelDate")    %></td>
-          <td><%= r.get("time")          %></td>
-          <td><%= r.get("origin")        %></td>
-          <td><%= r.get("destination")   %></td>
-          <td><%= r.get("seat")          %></td>
+          <% if (isAdmin) { %><td><%= r.get("username") %></td><% } %>
+          <td><%= r.get("id") %></td>
+          <td><%= r.get("train") %></td>
+          <td><%= line %></td>
+          <td><%= r.get("travelDate") %></td>
+          <td class="depart-time"
+              data-line="<%= line %>"
+              data-origin="<%= origin %>"
+              data-destination="<%= dest %>"
+              data-time="<%= dbTimeStr %>">--:--</td>
+          <td class="arrival-time">--:--</td>
+          <td><%= origin %></td>
+          <td><%= dest %></td>
+          <td><%= r.get("seat") %></td>
           <td><%= r.get("passengerType") %></td>
-          <td><%= r.get("tripType")      %></td>
-          <td>$<%= r.get("fare")         %></td>
-          <td><%= r.get("bookedOn")      %></td>
+          <td><%= r.get("tripType") %></td>
+          <td>$<%= r.get("fare") %></td>
+          <td><%= r.get("bookedOn") %></td>
         </tr>
         <%   }
-          }
+           }
         %>
       </table>
     </div>
 
     <a href="welcome.jsp" class="btn-back">Back to Welcome</a>
   </div>
+
+  <script>
+    // base schedule for line 4000
+    const outbound = ['Trenton','New Brunswick','Newark Penn','New York Penn'];
+    const inbound  = ['New York Penn','Newark Penn','New Brunswick','Trenton'];
+    const baseOut  = {
+      'Trenton':'08:00','New Brunswick':'09:00',
+      'Newark Penn':'10:00','New York Penn':'11:00'
+    };
+    const baseIn   = {
+      'New York Penn':'14:00','Newark Penn':'15:00',
+      'New Brunswick':'16:00','Trenton':'17:00'
+    };
+
+    function shiftTime(timeStr, offset) {
+      let [h,m] = timeStr.split(':').map(Number);
+      h += offset;
+      return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+
+    // compute for every row
+    document.querySelectorAll('td.depart-time').forEach(td => {
+      const line  = td.dataset.line;
+      const ori   = td.dataset.origin;
+      const dst   = td.dataset.destination;
+      const fallback = td.dataset.time;  // DB time
+      let depart='--:--', arrive='--:--';
+
+      if (line.startsWith('400')) {
+        const offset = parseInt(line,10) - 4000;
+        const oi = outbound.indexOf(ori), di = outbound.indexOf(dst);
+        if (oi>=0 && di>=0 && oi<di) {
+          depart = shiftTime(baseOut[ori], offset);
+          arrive = shiftTime(baseOut[dst], offset);
+        } else {
+          const ii = inbound.indexOf(ori), id = inbound.indexOf(dst);
+          if (ii>=0 && id>=0 && ii<id) {
+            depart = shiftTime(baseIn[ori], offset);
+            arrive = shiftTime(baseIn[dst], offset);
+          }
+        }
+      } else {
+        depart = fallback;
+      }
+
+      td.textContent = depart;
+      const next = td.nextElementSibling;
+      if (next && next.classList.contains('arrival-time')) {
+        next.textContent = arrive;
+      }
+    });
+  </script>
 </body>
 </html>
-
 
 

@@ -71,6 +71,10 @@
     <a class="btn" href="<%=request.getContextPath()%>/admin/reservations/customer">
       List Reservations by Customer
     </a>
+    <a class="btn" href="<%=request.getContextPath()%>/admin/extended-reports">
+ View Revenue & Top‐5 Line Reports
+</a>
+    
     
  
 

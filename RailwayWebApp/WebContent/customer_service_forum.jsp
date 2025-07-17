@@ -109,6 +109,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Roboto', sans-serif;
+      
       background: url('chatroom.jpg') no-repeat center center fixed;
       background-size: cover;
     }

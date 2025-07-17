@@ -3,7 +3,7 @@ package com.example.login;
 import java.sql.*;
 
 public class DatabaseUtils {
-  private static final String URL  = "jdbc:mysql://localhost:3306/login_project";
+  private static final String URL  = "jdbc:mysql://localhost:3306/login_project6";
   private static final String USER = "root";
   private static final String PASS = "Fla97456@";
 
